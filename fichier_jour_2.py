@@ -25,3 +25,29 @@ def generate_dmf(key,duration=0.5):
 
 sequence = np.concatenate([generate_dmf(k) for k in "123"])
 wav.write("sequence123.wav",8000,sequence)
+
+#definition de la fonction de silence entre les touches
+
+def generate_silence(duration=0.1,Fs=8000):
+    #calcul du nombre d'echantillon
+    N_silence = int(Fs*duration)
+    #creation du tableau de silence
+
+    silence = np.zeros(N_silence,dtype=np.int16)
+    return silence
+
+audio_segments = []
+
+for k in "123":
+    #on genère le son de la touche et on l'ajoute 
+   ton = generate_dmf(k)
+   audio_segments.append(ton)
+
+   silence = generate_silence(duration=0.1)
+   audio_segments.append(silence)
+
+sequence_final = np.concatenate(audio_segments)
+
+wav.write("test_sequence.wav",8000,sequence_final)
+print("sequnece avec silence enregistrée")
+

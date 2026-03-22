@@ -17,6 +17,6 @@ signal = A * np.sin(2 * np.pi * f_low * n / Fs) + A * np.sin(2 * np.pi * f_high 
 #  2. PRÉPARATION DU WAV (Scaling et Conversion int16)
 audio_data = (signal * scale_factor).astype(np.int16)
 
-# 💾 3. SAUVEGARDE
+#  3. SAUVEGARDE
 wav.write("tonalite_5.wav", Fs, audio_data)
-print("✅ Fichier sauvegardé: tonalite_5.wav")
+print(" Fichier sauvegardé: tonalite_5.wav")
