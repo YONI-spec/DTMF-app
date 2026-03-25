@@ -2,7 +2,7 @@ import numpy as np
 import scipy.io.wavfile as wav
 from dtmf_utils import DTMF_number
 
-def generate_dmf(key,duration=0.5):
+def generate_dtmf(key,duration=0.5):
     Fs = 8000 #Frequence d'echantillonage
     #retourne un message d'erreur si l'utilisateur n'entre pas un nombre parmi ceux du dictionnaire
     if key not in DTMF_number:
@@ -17,7 +17,7 @@ def generate_dmf(key,duration=0.5):
     return (signal*facteur_de_conversion).astype(np.int16)
 
 
-sequence = np.concatenate([generate_dmf(k) for k in "123"])
+sequence = np.concatenate([generate_dtmf(k) for k in "123"])
 wav.write("sequence123.wav",8000,sequence)
 
 #definition de la fonction de silence entre les touches
@@ -34,7 +34,7 @@ audio_segments = []
 
 for k in "2831":
     #on genère le son de la touche et on l'ajoute 
-   ton = generate_dmf(k)
+   ton = generate_dtmf(k)
    audio_segments.append(ton)
 
    silence = generate_silence(duration=0.1)
@@ -44,4 +44,8 @@ sequence_final = np.concatenate(audio_segments)
 
 wav.write("test_sequence.wav",8000,sequence_final)
 print("sequnece avec silence enregistrée")
+
+
+
+
 
