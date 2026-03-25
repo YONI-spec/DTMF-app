@@ -13,7 +13,7 @@ def generate_dtmf(key,duration=0.5):
     n = np.arange(N)
     #pour transformer le signal en 16bits pour permettre l'enregistrement en wav
     facteur_de_conversion = 32767
-    signal = 0.5*np.sin(2*np.pi*(f_b*n)/Fs) + np.sin(2*np.pi*(f_h*n)/Fs)
+    signal = 0.5*np.sin(2*np.pi*(f_b*n)/Fs) + 0.5*np.sin(2*np.pi*(f_h*n)/Fs)
     return (signal*facteur_de_conversion).astype(np.int16)
 
 
@@ -32,7 +32,7 @@ def generate_silence(duration=0.1,Fs=8000):
 
 audio_segments = []
 
-for k in "2831":
+for k in "2891":
     #on genère le son de la touche et on l'ajoute 
    ton = generate_dtmf(k)
    audio_segments.append(ton)
