@@ -1,6 +1,7 @@
 #include "goertzel.h"
+#define _USE_MATH_DEFINES
 #include <math.h>
-#include <corecrt_math_defines.h>
+
 
 void goertzel_run(float* buffer,int size, float fs, float* magnitudes){
     float target_freq[7]={697, 770, 852, 941, 1209, 1336, 1477,};
@@ -15,8 +16,13 @@ void goertzel_run(float* buffer,int size, float fs, float* magnitudes){
 
         //boucle sur les echantillons
         for (int n = 0;n < size;n++){
+            s_0 = buffer[n] + (coeff * s_1) - s_2;
+            s_2 = s_1;
+            s_1 = s_0;
             
         }
+
+        magnitudes[i] = (s_1 * s_1) + (s_2 * s_2) - (coeff * s_1 * s_2);
     }
 
 }
