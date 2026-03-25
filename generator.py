@@ -32,7 +32,7 @@ def generate_silence(duration=0.1,Fs=8000):
 
 audio_segments = []
 
-for k in "123":
+for k in "2831":
     #on genère le son de la touche et on l'ajoute 
    ton = generate_dmf(k)
    audio_segments.append(ton)
