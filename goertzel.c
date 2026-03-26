@@ -4,8 +4,8 @@
 
 
 void goertzel_run(float* buffer,int size, float fs, float* magnitudes){
-    float target_freq[7]={697, 770, 852, 941, 1209, 1336, 1477,};
-    for(int i = 0; i<7; i++){
+    float target_freq[8]={697, 770, 852, 941, 1209, 1336, 1477,1633};
+    for(int i = 0; i<8; i++){
         float f = target_freq[i];
         //precalcul du coefficient
         float omega = (2.0f * M_PI * f)/fs;
