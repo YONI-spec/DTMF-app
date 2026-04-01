@@ -9,7 +9,7 @@ from scipy import signal  # Importation pour le rééchantillonnage
 app = Flask(__name__)
 CORS(app)
 
-# ── Chargement de la DLL C ──────────────────────────────────────────────────
+# Chargement de la DLL C
 dll_path = os.path.abspath("goertzel.dll")
 lib = ctypes.CDLL(dll_path)
 
@@ -21,7 +21,7 @@ lib.goertzel_run.argtypes = [
 ]
 lib.goertzel_run.restype = None
 
-# ── Constantes DTMF ─────────────────────────────────────────────────────────
+# Constantes DTMF 
 F_LOW  = [697.0, 770.0, 852.0, 941.0]
 F_HIGH = [1209.0, 1336.0, 1477.0, 1633.0]
 
@@ -135,7 +135,7 @@ def analyse_wav(data, fs):
             yield samples, start / fs
     return analyse_blocks(blocks(), fs)
 
-# ── Routes ───────────────────────────────────────────────────────────────────
+#Routes
 
 @app.route('/')
 def index():

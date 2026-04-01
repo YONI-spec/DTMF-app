@@ -4,11 +4,11 @@ import os
 from dtmf_utils import DTMF_number, f_h, f_b
 from generator import sequence_final
 
-# configuration du pont C (ctypes) ---
+# configuration du pont C (ctypes)
 dll_path = os.path.abspath("goertzel.dll")
 lib = ctypes.CDLL(dll_path)
 
-# On définit bien ici que la fonction C s'appelle goertzel_run
+# On définit bien ici que la fonction C 
 lib.goertzel_run.argtypes = [ctypes.POINTER(ctypes.c_float), ctypes.c_int, ctypes.c_float, ctypes.POINTER(ctypes.c_float)]
 
 # fonction python (Celle que app.py va importer) 
