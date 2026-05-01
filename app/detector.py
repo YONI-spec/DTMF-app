@@ -2,7 +2,7 @@ import numpy as np
 import ctypes
 import os
 from dtmf_utils import DTMF_number, f_h, f_b
-from generator import sequence_final
+from tests.generator import sequence_final
 
 # configuration du pont C (ctypes)
 dll_path = os.path.abspath("goertzel.dll")
