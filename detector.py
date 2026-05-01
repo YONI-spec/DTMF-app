@@ -32,13 +32,7 @@ def goertzel_run_python(samples, fs):
     
     return magnitudes
 
-# On définit la signature de la fonction C
-lib.goertzel_run.argtypes = [
-    ctypes.POINTER(ctypes.c_float), # buffer
-    ctypes.c_int,                   # size
-    ctypes.c_float,                 # fs
-    ctypes.POINTER(ctypes.c_float)  # magnitudes (sortie)
-]
+
 lib.goertzel_run.restype = None
 
 Fs = 8000
@@ -56,7 +50,7 @@ last_state = "silence"
 
 # On prépare un tableau pour les 8 fréquences cibles définies dans le C
 # Ordre : 697, 770, 852, 941 (Basses) puis 1209, 1336, 1477, 1633 (Hautes)
-all_target_freqs = f_b + f_h + [1633.0] if len(f_h) < 4 else f_b + f_h
+all_target_freqs = f_b + f_h 
 
 for i in np.arange(0, len(sequence_final), 205):
     samples = sequence_final[i:i+205].astype(np.float32)
@@ -65,13 +59,8 @@ for i in np.arange(0, len(sequence_final), 205):
     total_energy = np.mean(samples**2)
 
     # Appel de la DLL C : Calcule les 8 magnitudes d'un coup !
-    magnitudes = np.zeros(8, dtype=np.float32)
-    lib.goertzel_run(
-        samples.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-        len(samples),
-        float(Fs),
-        magnitudes.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    )
+    magnitudes = goertzel_run_python(samples,Fs)
+    
 
     # On sépare les résultats (4 basses, 4 hautes)
     low_mags = magnitudes[:4]
