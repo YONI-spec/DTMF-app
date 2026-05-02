@@ -5,7 +5,7 @@ import ctypes
 import os
 from scipy.io import wavfile
 from scipy import signal  # Importation pour le rééchantillonnage
-from dtmf_engine import run_goertzel_block,analyse_blocks,analyse_wav
+from dtmf_engine import run_goertzel_block,analyse_wav
 
 app = Flask(__name__)
 CORS(app)
