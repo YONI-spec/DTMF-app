@@ -83,13 +83,13 @@ def analyse_blocks(blocks_iter, fs):
             best_high_e = float(mags[idx_h])
             ref = total_energy * rel_threshold
             #calcul du twist_ratio pour l'equilibrage 
-            if best_low_e > 0 :
+            """if best_low_e > 0 :
                 twist_ratio = best_high_e/best_low_e
                 is_balanced = (0.25 <= twist_ratio <= 4.0)
             else:
-                is_balanced = False
+                is_balanced = False"""
 
-            if mags[idx_l] > ref and mags[idx_h] > ref and is_balanced:
+            if mags[idx_l] > ref and mags[idx_h] > ref :#and is_balanced:
                 raw_detected = find_char(best_low_f, best_high_f)
                 if raw_detected != '?':
                     is_tone = True
