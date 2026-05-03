@@ -1,7 +1,21 @@
 import numpy as np 
 import ctypes
 from dtmf_utils import DTMF_number,f_b,f_h
-from detector import find_char,dll_path,lib
+import os
+
+
+# configuration du pont C (ctypes)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+dll_path = os.path.join(BASE_DIR, "..", "decoder", "goertzel.so")
+lib = ctypes.CDLL(dll_path)
+
+
+# logique de recherche du caractère 
+def find_char(best_low_freq, best_high_freq):
+    for char, (fb, fh) in DTMF_number.items():
+        if abs(best_low_freq - fb) < 20 and abs(best_high_freq - fh) < 20:
+            return char
+    return "?"
 
 
 
