@@ -3,765 +3,893 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DTMF · Goertzel Analyzer</title>
+<title>DTMF // Goertzel Engine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#060b10;--bg2:#0a1220;--bg3:#0f1c2e;
-  --border:#162438;--border2:#1e3450;
-  --cyan:#00e5d4;--cyanD:#003d38;--cyanDim:rgba(0,229,212,.1);
-  --amber:#f0a020;--amberD:rgba(240,160,32,.1);
-  --green:#1ddd88;--red:#ff3355;--purple:#a066ff;
-  --gray:#3a5570;--gray2:#5a7890;--white:#b8cce0;
-  --mono:'Share Tech Mono',monospace;--head:'Orbitron',monospace;
-  --bar-bg:#0d1a28;
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0a0d12;
+  --bg2:       #0f1318;
+  --bg3:       #141920;
+  --bg4:       #1a2028;
+  --border:    rgba(0,255,180,0.10);
+  --border2:   rgba(0,255,180,0.22);
+  --accent:    #00ffb4;
+  --accent2:   #00c88a;
+  --accent-dim:rgba(0,255,180,0.13);
+  --text:      #e4ede8;
+  --text2:     #7a9490;
+  --text3:     #3d5550;
+  --warn:      #ffd166;
+  --danger:    #ff6b6b;
+  --mono:      'Space Mono', monospace;
+  --display:   'Syne', sans-serif;
 }
-html{font-size:14px}
-body{background:var(--bg);color:var(--white);font-family:var(--mono);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
-body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);pointer-events:none;z-index:9999}
 
-/* HEADER */
-.header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:var(--bg2);border-bottom:1px solid var(--border);position:relative}
-.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,var(--cyan) 30%,var(--cyan) 70%,transparent 100%);opacity:.3}
-.logo{font-family:var(--head);font-size:14px;font-weight:700;color:var(--cyan);letter-spacing:4px}
-.logo span{color:var(--gray2);font-weight:500;font-size:10px}
-.header-meta{display:flex;align-items:center;gap:18px;font-size:10px;color:var(--gray2);letter-spacing:1px}
-.badge{display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border2);border-radius:2px;background:var(--bg3)}
-.dot{width:6px;height:6px;border-radius:50%;background:var(--gray);transition:background .3s,box-shadow .3s}
-.dot.alive{background:var(--green);box-shadow:0 0 6px var(--green)}
-.dot.active{background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:blink .6s ease-in-out infinite}
-.dot.rec{background:var(--red);box-shadow:0 0 8px var(--red);animation:blink .5s ease-in-out infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--mono); overflow: hidden; }
 
-/* TABS */
-.tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px}
-.tab{font-family:var(--head);font-size:9px;letter-spacing:2px;padding:10px 18px;cursor:pointer;color:var(--gray2);border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
-.tab:hover{color:var(--white)}
-.tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
-.tab-content{display:none;flex:1}
-.tab-content.active{display:flex;flex:1}
+/* ─── HEADER ─── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  height: 44px;
+}
+.logo {
+  font-family: var(--display); font-weight: 800; font-size: 15px;
+  letter-spacing: .08em; color: var(--accent);
+  display: flex; align-items: center; gap: 10px;
+}
+.logo span { color: var(--text2); font-weight: 400; font-size: 11px; letter-spacing: .15em; font-family: var(--mono); }
+.logo-sep { width: 1px; height: 18px; background: var(--border2); }
+.status-row { display: flex; align-items: center; gap: 16px; }
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; letter-spacing: .12em; color: var(--text2);
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
+.dot.on  { background: var(--accent);  box-shadow: 0 0 6px var(--accent); animation: blink 2s infinite; }
+.dot.err { background: var(--danger);  box-shadow: 0 0 6px var(--danger); }
+.dot.warn{ background: var(--warn);    box-shadow: 0 0 6px var(--warn); animation: blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.45} }
+#clock { font-size: 11px; color: var(--text2); letter-spacing: .1em; }
 
-/* LAYOUT */
-.workspace{flex:1;display:grid;grid-template-columns:280px 1fr 260px;grid-template-rows:1fr auto;height:calc(100vh - 90px)}
-.panel{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:14px;display:flex;flex-direction:column;gap:12px;overflow:hidden;position:relative}
-.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,212,.15),transparent);pointer-events:none}
-.panel:last-child{border-right:none}
-.panel-title{font-family:var(--head);font-size:8px;font-weight:700;letter-spacing:3px;color:var(--gray);text-transform:uppercase;display:flex;align-items:center;gap:8px}
-.panel-title::before{content:'';display:inline-block;width:3px;height:10px;background:var(--cyan);border-radius:1px;opacity:.6}
+/* ─── TABS ─── */
+.tabs {
+  display: flex; border-bottom: 1px solid var(--border);
+  background: var(--bg2); padding: 0 20px; height: 34px;
+}
+.tab {
+  padding: 0 18px; font-size: 10px; letter-spacing: .15em;
+  color: var(--text3); cursor: pointer;
+  border-bottom: 2px solid transparent;
+  display: flex; align-items: center;
+  transition: all .2s; text-transform: uppercase;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab:hover:not(.active) { color: var(--text2); }
 
-/* DROP ZONE */
-.drop-zone{border:1px dashed var(--border2);border-radius:4px;background:var(--bg3);padding:22px 12px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative}
-.drop-zone:hover,.drop-zone.dragover{border-color:var(--cyan);background:var(--cyanDim)}
-.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.drop-icon{font-size:24px;color:var(--gray);display:block;margin-bottom:6px}
-.drop-label{font-size:10px;color:var(--gray2);letter-spacing:1px;line-height:1.6}
-.drop-label strong{color:var(--cyan)}
+/* ─── LAYOUT ─── */
+.main {
+  display: grid;
+  grid-template-columns: 210px 1fr 196px;
+  height: calc(100vh - 78px);
+}
 
-/* FILE INFO */
-.file-info-box{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:8px 12px;font-size:10px;color:var(--gray2);line-height:2;display:none}
-.file-info-box.visible{display:block}
-.file-info-box b{color:var(--white);font-weight:400}
+/* ─── LEFT PANEL ─── */
+.left-panel {
+  background: var(--bg2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.panel-section { padding: 13px 14px; border-bottom: 1px solid var(--border); }
+.section-label {
+  font-size: 8.5px; letter-spacing: .2em; color: var(--text3);
+  text-transform: uppercase; margin-bottom: 9px;
+  display: flex; align-items: center; gap: 6px;
+}
+.section-label::before { content:''; width:2px; height:10px; background:var(--accent); border-radius:1px; flex-shrink:0; }
 
-/* BUTTONS */
-.run-btn{font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:3px;padding:11px;background:var(--cyanD);border:1px solid var(--cyan);color:var(--cyan);border-radius:3px;cursor:pointer;text-transform:uppercase;text-align:center;transition:background .15s,box-shadow .15s;width:100%}
-.run-btn:hover:not(:disabled){background:rgba(0,229,212,.2);box-shadow:0 0 18px rgba(0,229,212,.18)}
-.run-btn:disabled{opacity:.35;cursor:not-allowed}
-.run-btn.red-btn{background:rgba(255,51,85,.1);border-color:var(--red);color:var(--red)}
-.run-btn.red-btn:hover:not(:disabled){background:rgba(255,51,85,.2);box-shadow:0 0 18px rgba(255,51,85,.18)}
-.run-btn.purple-btn{background:rgba(160,102,255,.1);border-color:var(--purple);color:var(--purple)}
-.run-btn.purple-btn:hover:not(:disabled){background:rgba(160,102,255,.2)}
+/* Drop zone */
+.drop-zone {
+  border: 1px dashed var(--border2); border-radius: 7px;
+  padding: 16px 10px; text-align: center; cursor: pointer;
+  transition: all .2s; background: var(--bg3);
+  position: relative;
+}
+.drop-zone.dragover, .drop-zone:hover { border-color: var(--accent); background: var(--accent-dim); }
+.drop-zone.has-file { border-color: var(--accent2); border-style: solid; }
+.drop-icon {
+  width: 26px; height: 26px; margin: 0 auto 7px;
+  border: 1px solid var(--border2); border-radius: 5px;
+  display: flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.drop-main { font-size: 10px; color: var(--accent); letter-spacing: .05em; font-weight: 700; margin-bottom: 2px; }
+.drop-sub  { font-size: 8.5px; color: var(--text3); letter-spacing: .07em; }
+.drop-filename { font-size: 9px; color: var(--accent2); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+#file-input { display: none; }
 
-/* PROGRESS */
-.progress-track{height:3px;background:var(--bg3);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),#00fff5);border-radius:2px;transition:width .08s linear;box-shadow:0 0 6px var(--cyan)}
+.btn-analyze {
+  width: 100%; padding: 9px; margin-top: 9px;
+  background: var(--accent); color: var(--bg);
+  border: none; border-radius: 6px;
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; cursor: pointer;
+  transition: all .2s;
+}
+.btn-analyze:hover:not(:disabled) { background: #fff; }
+.btn-analyze:disabled { opacity: .4; cursor: not-allowed; }
+.btn-reset {
+  width: 100%; padding: 7px; margin-top: 5px;
+  background: transparent; color: var(--text3);
+  border: 1px solid var(--border); border-radius: 6px;
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+  transition: all .2s;
+}
+.btn-reset:hover { border-color: var(--border2); color: var(--text2); }
 
-/* METRICS */
-.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.metric{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:8px 10px}
-.metric-label{font-size:8px;color:var(--gray);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
-.metric-value{font-family:var(--head);font-size:16px;font-weight:700;color:var(--cyan)}
-.metric-value.green{color:var(--green)}
-.metric-value.amber{color:var(--amber)}
-.metric-value.red{color:var(--red)}
+/* Progress */
+.prog-wrap { background: var(--bg4); border-radius: 2px; height: 3px; overflow: hidden; margin-bottom: 5px; }
+.prog-fill  { height: 100%; width: 0%; background: var(--accent); border-radius: 2px; transition: width .25s ease; }
+.prog-label { font-size: 8.5px; color: var(--text3); letter-spacing: .07em; }
 
-/* LOG */
-.log-box{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:8px;overflow-y:auto;font-size:9px;color:var(--gray2);line-height:1.8;min-height:60px}
-.log-line{display:flex;gap:8px}
-.log-ts{color:var(--gray);min-width:40px}
-.log-msg.tone{color:var(--cyan)}
-.log-msg.warn{color:var(--amber)}
-.log-msg.err{color:var(--red)}
-.log-msg.mic{color:var(--purple)}
+/* Metrics */
+.metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.metric-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 5px; padding: 7px 9px;
+}
+.metric-label { font-size: 7.5px; color: var(--text3); letter-spacing: .15em; text-transform: uppercase; margin-bottom: 3px; }
+.metric-val { font-size: 17px; font-weight: 700; color: var(--accent); line-height: 1; }
+.metric-val.zero  { color: var(--text3); }
+.metric-val.small { font-size: 12px; }
 
-/* ERROR */
-.error-banner{display:none;background:rgba(255,51,85,.08);border:1px solid rgba(255,51,85,.3);border-radius:3px;padding:8px 12px;font-size:10px;color:#ff8899;letter-spacing:1px}
-.error-banner.visible{display:block}
+/* Journal */
+.journal-box {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 5px;
+  padding: 7px 9px; min-height: 54px; max-height: 54px; overflow-y: auto;
+  font-size: 8.5px; color: var(--text3); letter-spacing: .05em; line-height: 1.65;
+}
+.journal-line { margin-bottom: 1px; }
+.journal-line.ok   { color: var(--accent2); }
+.journal-line.warn { color: var(--warn); }
+.journal-line.err  { color: var(--danger); }
 
-/* FREQ BARS */
-.panel-center{grid-row:1;grid-column:2;display:flex;flex-direction:column;padding:0;overflow:hidden}
-.viz-section{padding:14px 18px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--border)}
-.viz-section:last-child{border-bottom:none;flex:1}
-.freq-group{display:flex;flex-direction:column;gap:6px}
-.freq-group-header{display:flex;align-items:center;gap:10px;font-size:9px;color:var(--gray);letter-spacing:2px}
-.freq-group-header::after{content:'';flex:1;height:1px;background:var(--border)}
-.tag{padding:1px 6px;border-radius:2px;font-size:8px;letter-spacing:1px}
-.tag-low{background:rgba(0,229,212,.08);color:var(--cyan);border:1px solid rgba(0,229,212,.2)}
-.tag-high{background:rgba(240,160,32,.08);color:var(--amber);border:1px solid rgba(240,160,32,.2)}
-.bars-row{display:flex;gap:8px;align-items:flex-end;height:88px}
-.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
-.bar-track{width:100%;flex:1;background:var(--bar-bg);border-radius:2px 2px 0 0;position:relative;overflow:hidden;border:1px solid var(--border)}
-.bar-fill{position:absolute;bottom:0;left:0;right:0;border-radius:2px 2px 0 0;transition:height .07s ease-out;height:0%}
-.bar-fill.low-bar{background:linear-gradient(0deg,#004d48,var(--cyan))}
-.bar-fill.high-bar{background:linear-gradient(0deg,#3d2800,var(--amber))}
-.bar-fill.low-bar.lit{box-shadow:0 0 10px var(--cyan)}
-.bar-fill.high-bar.lit{box-shadow:0 0 10px var(--amber)}
-.bar-freq{font-size:8px;color:var(--gray);white-space:nowrap}
-.bar-val{font-size:9px;font-family:var(--head);color:var(--gray2);transition:color .1s;min-height:11px}
-.bar-val.lit-c{color:var(--cyan)}
-.bar-val.lit-a{color:var(--amber)}
+/* ─── CENTER ─── */
+.center-panel {
+  background: var(--bg); display: flex; flex-direction: column; overflow: hidden;
+}
 
-/* SPECTRO */
-.spectro-wrap{flex:1;position:relative;background:var(--bar-bg);border:1px solid var(--border);border-radius:3px;overflow:hidden;min-height:70px}
-.spectro-canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
-.spectro-axis{position:absolute;right:0;top:0;bottom:0;width:66px;display:flex;flex-direction:column;justify-content:space-between;padding:4px 6px;background:rgba(6,11,16,.75);border-left:1px solid var(--border)}
-.spectro-axis span{font-size:7px;color:var(--gray);text-align:right}
+/* Freq section */
+.freq-section { padding: 12px 14px 11px; border-bottom: 1px solid var(--border); }
+.freq-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+}
+.freq-title {
+  font-size: 8.5px; letter-spacing: .2em; color: var(--text3);
+  text-transform: uppercase; display: flex; align-items: center; gap: 6px;
+}
+.freq-title::before { content:''; width:2px; height:10px; background:var(--accent); border-radius:1px; }
 
-/* RIGHT PANEL */
-.panel-right{grid-row:1/3}
-.big-char-wrap{background:var(--bg3);border:1px solid var(--border2);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;gap:6px;position:relative;overflow:hidden}
-.big-char-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(0,229,212,.04) 0%,transparent 70%);pointer-events:none}
-.big-char-label{font-size:8px;color:var(--gray);letter-spacing:2px}
-.big-char{font-family:var(--head);font-size:68px;font-weight:900;color:var(--cyan);text-shadow:0 0 28px rgba(0,229,212,.5),0 0 56px rgba(0,229,212,.2);line-height:1;transition:all .1s;min-height:78px;display:flex;align-items:center}
-.big-char.silence{color:var(--gray);text-shadow:none;font-size:26px}
-.big-char.mic-mode{color:var(--purple);text-shadow:0 0 28px rgba(160,102,255,.5)}
-.big-char-freqs{font-size:9px;color:var(--gray2);letter-spacing:1px;text-align:center;line-height:1.8}
-.f-low{color:var(--cyan);opacity:.85}
-.f-high{color:var(--amber);opacity:.85}
+.row-badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 3px;
+  font-size: 7.5px; font-weight: 700; letter-spacing: .1em;
+  margin-bottom: 6px; margin-right: 6px;
+}
+.row-badge.bass { background: rgba(0,200,138,.15); color: var(--accent2); border: 1px solid rgba(0,200,138,.28); }
+.row-badge.high { background: rgba(255,209,102,.11); color: var(--warn);   border: 1px solid rgba(255,209,102,.22); }
+.row-sub { font-size: 8px; color: var(--text3); vertical-align: middle; }
 
-/* STABLE BAR */
-.stable-bar-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:8px 12px}
-.stable-bar-label{font-size:8px;color:var(--gray);letter-spacing:2px;margin-bottom:5px;display:flex;justify-content:space-between}
-.stable-track{height:6px;background:var(--bar-bg);border-radius:3px;overflow:hidden}
-.stable-fill{height:100%;width:0%;border-radius:3px;transition:width .1s,background .1s}
-.stable-fill.s1{background:var(--amber)}
-.stable-fill.s2{background:var(--amber)}
-.stable-fill.s3{background:var(--green);box-shadow:0 0 6px var(--green)}
+.freq-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.freq-bar-wrap {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 5px;
+  overflow: hidden; position: relative; height: 70px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  transition: border-color .25s;
+}
+.freq-bar-wrap.active-bar { border-color: var(--accent2); }
+.freq-bar-fill {
+  width: 100%; height: 2px;
+  background: linear-gradient(to top, var(--accent2), var(--accent));
+  transition: height .35s cubic-bezier(.25,.46,.45,.94);
+  flex-shrink: 0;
+}
+.freq-info {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 7px; background: var(--bg2); border-top: 1px solid var(--border);
+}
+.freq-hz  { font-size: 8px; color: var(--text3); letter-spacing: .04em; }
+.freq-val { font-size: 8px; color: var(--accent2); font-weight: 700; transition: color .2s; }
+.freq-val.hot { color: var(--accent); }
 
-/* SEQUENCE */
-.seq-tape{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:8px;display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start;min-height:44px}
-.seq-char{font-family:var(--head);font-size:17px;font-weight:700;color:var(--cyan);width:27px;height:27px;display:flex;align-items:center;justify-content:center;background:var(--cyanD);border:1px solid rgba(0,229,212,.22);border-radius:3px;animation:pop .2s cubic-bezier(.34,1.56,.64,1)}
-.seq-char.sp{color:var(--purple);background:rgba(160,102,255,.12);border-color:rgba(160,102,255,.22)}
-@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
-.full-seq{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px 12px;font-family:var(--head);font-size:19px;font-weight:700;color:var(--white);letter-spacing:4px;word-break:break-all;min-height:42px}
+/* Spectrogram */
+.spectro-section { flex: 1; padding: 11px 14px 0; display: flex; flex-direction: column; min-height: 0; }
+.spectro-title {
+  font-size: 8.5px; letter-spacing: .2em; color: var(--text3); text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px; margin-bottom: 7px; flex-shrink: 0;
+}
+.spectro-title::before { content:''; width:2px; height:10px; background:var(--warn); border-radius:1px; }
+.spectro-canvas {
+  flex: 1; min-height: 0; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 6px;
+  position: relative; overflow: hidden;
+}
+.spectro-canvas canvas { display: block; width: 100%; height: 100%; }
+.spectro-freq-labels {
+  position: absolute; right: 5px; top: 4px; bottom: 4px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  pointer-events: none;
+}
+.spectro-freq-label { font-size: 7.5px; color: var(--text3); letter-spacing: .04em; }
 
-/* TIMELINE (bottom center) */
-.panel-bottom{grid-column:2;grid-row:2;padding:8px 18px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--border);background:var(--bg2);font-size:9px;color:var(--gray);letter-spacing:1px}
-.timeline-wrap{flex:1;height:22px;background:var(--bar-bg);border:1px solid var(--border);border-radius:2px;position:relative;overflow:hidden}
-.timeline-cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--cyan);box-shadow:0 0 5px var(--cyan);left:0%;transition:left .08s linear}
-.timeline-tone{position:absolute;top:4px;bottom:4px;background:rgba(0,229,212,.2);border-radius:1px}
+/* Timeline */
+.timeline-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 14px 7px; border-top: 1px solid var(--border);
+  background: var(--bg2); flex-shrink: 0;
+}
+.timeline-label { font-size: 8px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; flex-shrink: 0; }
+.timeline-track {
+  flex: 1; height: 3px; background: var(--bg4); border-radius: 2px; position: relative;
+}
+.timeline-progress { position: absolute; left: 0; top: 0; height: 100%; background: var(--accent-dim); border-radius: 2px; width: 0%; transition: width .25s; }
+.timeline-head {
+  position: absolute; left: 0; top: -4px;
+  width: 2px; height: 11px; background: var(--accent);
+  border-radius: 1px; box-shadow: 0 0 6px var(--accent);
+  transition: left .25s;
+}
+.timeline-time { font-size: 9px; color: var(--text3); letter-spacing: .07em; flex-shrink: 0; min-width: 46px; text-align: right; }
 
-/* MIC VIZ */
-.mic-level-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:8px 12px}
-.mic-level-label{font-size:8px;color:var(--gray);letter-spacing:2px;margin-bottom:5px}
-.mic-level-track{height:8px;background:var(--bar-bg);border-radius:3px;overflow:hidden}
-.mic-level-fill{height:100%;width:0%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--cyan));transition:width .04s}
+/* ─── RIGHT PANEL ─── */
+.right-panel {
+  background: var(--bg2); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
 
-/* scrollbars */
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+/* Decoder hero */
+.decoder-hero {
+  padding: 14px; border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+.decoder-label {
+  font-size: 8px; letter-spacing: .2em; color: var(--text3);
+  text-transform: uppercase; margin-bottom: 9px;
+  display: flex; align-items: center; gap: 6px;
+}
+.decoder-label::before { content:''; width:2px; height:8px; background:var(--accent); border-radius:1px; }
+.char-display {
+  width: 100%; height: 62px;
+  background: var(--bg); border: 1px solid var(--border2); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-size: 44px; font-weight: 800;
+  color: var(--accent); letter-spacing: .05em;
+  position: relative; overflow: hidden;
+}
+.char-display::after {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(circle at 50% 50%, rgba(0,255,180,.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+.char-placeholder { font-size: 12px; color: var(--text3); font-family: var(--mono); letter-spacing: .1em; font-weight: 400; }
+@keyframes charPop { from { transform: scale(1.35); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.char-anim { animation: charPop .2s ease-out; }
+
+.stability-row { display: flex; align-items: center; justify-content: space-between; margin-top: 9px; }
+.stab-label { font-size: 7.5px; color: var(--text3); letter-spacing: .12em; text-transform: uppercase; }
+.stab-dots { display: flex; gap: 4px; }
+.stab-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--bg4); border: 1px solid var(--border);
+  transition: all .15s;
+}
+.stab-dot.filled { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 5px var(--accent); }
+
+/* Sequence */
+.seq-section { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.seq-title {
+  font-size: 8px; letter-spacing: .2em; color: var(--text3);
+  text-transform: uppercase; margin-bottom: 7px;
+  display: flex; align-items: center; gap: 6px;
+}
+.seq-title::before { content:''; width:2px; height:8px; background:var(--warn); border-radius:1px; }
+.seq-block-list { display: flex; flex-wrap: wrap; gap: 4px; min-height: 26px; }
+.seq-block {
+  padding: 3px 8px; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 4px;
+  font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: .05em;
+}
+@keyframes blockIn { from { transform: scale(.7); opacity:0; } to { transform: scale(1); opacity:1; } }
+.seq-block.new { animation: blockIn .2s ease-out; }
+.seq-empty { font-size: 9px; color: var(--text3); }
+
+/* Result */
+.result-section { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.result-title {
+  font-size: 8px; letter-spacing: .2em; color: var(--text3);
+  text-transform: uppercase; margin-bottom: 7px;
+  display: flex; align-items: center; gap: 6px;
+}
+.result-title::before { content:''; width:2px; height:8px; background:var(--accent); border-radius:1px; }
+.result-display {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 5px; padding: 9px 11px;
+  font-family: var(--display); font-size: 15px; font-weight: 700;
+  color: var(--accent); letter-spacing: .12em; min-height: 36px;
+  word-break: break-all;
+}
+.result-placeholder { color: var(--text3); font-weight: 400; font-size: 9px; font-family: var(--mono); }
+
+/* Keypad */
+.keypad-section { padding: 12px 14px; margin-top: auto; }
+.keypad-title { font-size: 7.5px; color: var(--text3); letter-spacing: .18em; text-transform: uppercase; margin-bottom: 7px; }
+.keypad-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.key {
+  aspect-ratio: 1; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--text2);
+  transition: all .15s;
+}
+.key.active {
+  background: var(--accent-dim); border-color: var(--accent);
+  color: var(--accent); box-shadow: 0 0 8px rgba(0,255,180,.18);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--text3); border-radius: 2px; }
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<header class="header">
-  <div class="logo">DTMF <span>// GOERTZEL ENGINE</span></div>
-  <div class="header-meta">
-    <div class="badge"><div class="dot" id="server-dot"></div><span id="server-status">BACKEND OFFLINE</span></div>
-    <div class="badge"><div class="dot" id="proc-dot"></div><span id="proc-status">IDLE</span></div>
-    <div id="clock" style="font-family:var(--head);font-size:10px;color:var(--gray2)"></div>
+<div class="header">
+  <div class="logo">
+    DTMF
+    <div class="logo-sep"></div>
+    <span>GOERTZEL ENGINE v2</span>
   </div>
-</header>
+  <div class="status-row">
+    <div class="status-pill"><div class="dot" id="backend-dot"></div><span id="backend-label">BACKEND OFFLINE</span></div>
+    <div class="status-pill"><div class="dot on" id="state-dot"></div><span id="state-label">IDLE</span></div>
+    <span id="clock"></span>
+  </div>
+</div>
 
-<!-- TABS -->
 <div class="tabs">
-  <div class="tab active" id="tab-file" onclick="switchTab('file')">FICHIER WAV</div>
-  <div class="tab" id="tab-mic"  onclick="switchTab('mic')">MICROPHONE LIVE</div>
+  <div class="tab active">Fichier WAV</div>
+  <div class="tab">Microphone Live</div>
 </div>
 
-<!-- ═══ TAB FICHIER ═══ -->
-<div class="tab-content active" id="content-file">
-<div class="workspace">
+<div class="main">
 
-  <!-- LEFT -->
-  <aside class="panel" style="grid-row:1/3">
-    <div class="panel-title">Signal Input</div>
-    <div class="drop-zone" id="drop-zone">
-      <input type="file" accept=".wav" id="file-input">
-      <span class="drop-icon">▲</span>
-      <div class="drop-label"><strong>CHARGER UN FICHIER WAV</strong><br>glisser-déposer ou cliquer</div>
+  <!-- ── LEFT ── -->
+  <div class="left-panel">
+    <div class="panel-section">
+      <div class="section-label">Signal input</div>
+      <div class="drop-zone" id="drop-zone">
+        <div class="drop-icon">▲</div>
+        <div class="drop-main">Charger un fichier WAV</div>
+        <div class="drop-sub">glisser-déposer ou cliquer</div>
+        <div class="drop-filename" id="drop-filename" style="display:none"></div>
+      </div>
+      <input type="file" id="file-input" accept=".wav">
+      <button class="btn-analyze" id="btn-analyze" disabled>▶ Analyser</button>
+      <button class="btn-reset" id="btn-reset">↺ Réinitialiser</button>
     </div>
-    <div class="file-info-box" id="file-info">
-      <div>Fichier&nbsp;&nbsp;<b id="fi-name">—</b></div>
-      <div>Durée&nbsp;&nbsp;&nbsp;<b id="fi-dur">—</b></div>
-      <div>Taux&nbsp;&nbsp;&nbsp;&nbsp;<b id="fi-fs">—</b></div>
-      <div>Blocs&nbsp;&nbsp;&nbsp;<b id="fi-blocks">—</b></div>
+
+    <div class="panel-section">
+      <div class="section-label">Progression</div>
+      <div class="prog-wrap"><div class="prog-fill" id="prog-fill"></div></div>
+      <div class="prog-label" id="prog-label">0 / 0 blocs</div>
     </div>
-    <div class="error-banner" id="err-banner"></div>
-    <button class="run-btn" id="run-btn" disabled onclick="startAnalysis()">▶ ANALYSER</button>
-    <div>
-      <div class="panel-title" style="margin-bottom:6px">Progression</div>
-      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
-      <div style="font-size:9px;color:var(--gray);margin-top:4px;text-align:right"><span id="prog-label">0 / 0 blocs</span></div>
-    </div>
-    <div>
-      <div class="panel-title" style="margin-bottom:8px">Métriques</div>
+
+    <div class="panel-section">
+      <div class="section-label">Métriques</div>
       <div class="metrics-grid">
-        <div class="metric"><div class="metric-label">Blocs</div><div class="metric-value" id="m-blocks">0</div></div>
-        <div class="metric"><div class="metric-label">Tonalités</div><div class="metric-value green" id="m-tones">0</div></div>
-        <div class="metric"><div class="metric-label">Séquence</div><div class="metric-value amber" id="m-seq-len">0</div></div>
-        <div class="metric"><div class="metric-label">Énergie</div><div class="metric-value" id="m-energy" style="font-size:11px">0.0000</div></div>
+        <div class="metric-card">
+          <div class="metric-label">Blocs</div>
+          <div class="metric-val zero" id="m-blocs">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Tonalités</div>
+          <div class="metric-val zero" id="m-tones">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Séquence</div>
+          <div class="metric-val zero" id="m-seq">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Énergie</div>
+          <div class="metric-val zero small" id="m-energy">0.0000</div>
+        </div>
       </div>
     </div>
-    <div>
-      <div class="panel-title" style="margin-bottom:6px">Journal</div>
-      <div class="log-box" id="log-box"></div>
-    </div>
-    <button class="run-btn" style="background:transparent;border-color:var(--border2);color:var(--gray2);font-size:9px;padding:8px" onclick="resetAll()">↺ RÉINITIALISER</button>
-  </aside>
 
-  <!-- CENTER -->
-  <main class="panel-center">
-    <div class="viz-section" style="flex:1.3">
-      <div class="panel-title">Analyse fréquentielle · Goertzel</div>
-      <div class="freq-group">
-        <div class="freq-group-header"><span class="tag tag-low">BASSES</span>Rangées</div>
-        <div class="bars-row" id="bars-low"></div>
-      </div>
-      <div class="freq-group">
-        <div class="freq-group-header"><span class="tag tag-high">HAUTES</span>Colonnes</div>
-        <div class="bars-row" id="bars-high"></div>
+    <div class="panel-section" style="flex:1;overflow:hidden;">
+      <div class="section-label">Journal</div>
+      <div class="journal-box" id="journal">
+        <div class="journal-line">En attente d'un fichier...</div>
       </div>
     </div>
-    <div class="viz-section" style="flex:.7">
-      <div class="panel-title">Spectrogramme temporel</div>
-      <div class="spectro-wrap">
-        <canvas class="spectro-canvas" id="spectro-canvas"></canvas>
-        <div class="spectro-axis" id="spectro-axis"></div>
-      </div>
-    </div>
-  </main>
-
-  <!-- RIGHT -->
-  <aside class="panel" style="grid-row:1/3">
-    <div class="panel-title">Décodeur DTMF</div>
-    <div class="big-char-wrap">
-      <div class="big-char-label">CARACTÈRE DÉTECTÉ</div>
-      <div class="big-char silence" id="big-char">—</div>
-      <div class="big-char-freqs" id="big-char-freqs"><div>—</div></div>
-    </div>
-    <div class="stable-bar-wrap">
-      <div class="stable-bar-label"><span>STABILITÉ</span><span id="stable-label">0/3</span></div>
-      <div class="stable-track"><div class="stable-fill" id="stable-fill"></div></div>
-    </div>
-    <div>
-      <div class="panel-title" style="margin-bottom:8px">Séquence (blocs)</div>
-      <div class="seq-tape" id="seq-tape"></div>
-    </div>
-    <div>
-      <div class="panel-title" style="margin-bottom:8px">Résultat final</div>
-      <div class="full-seq" id="full-seq">—</div>
-    </div>
-  </aside>
-
-  <!-- BOTTOM TIMELINE -->
-  <div class="panel-bottom">
-    <span>TIMELINE</span>
-    <div class="timeline-wrap" id="timeline-wrap">
-      <div class="timeline-cursor" id="timeline-cursor"></div>
-    </div>
-    <span id="timeline-label">0.000s</span>
   </div>
 
-</div><!-- /workspace -->
-</div><!-- /tab-file -->
+  <!-- ── CENTER ── -->
+  <div class="center-panel">
+    <div class="freq-section">
+      <div class="freq-header">
+        <div class="freq-title">Analyse fréquentielle — Goertzel</div>
+      </div>
 
-<!-- ═══ TAB MICROPHONE ═══ -->
-<div class="tab-content" id="content-mic">
-<div class="workspace">
+      <div>
+        <span class="row-badge bass">BASSES</span>
+        <span class="row-sub">Rangées (row frequencies)</span>
+      </div>
+      <div class="freq-grid" id="bass-grid">
+        <!-- 4 bars: 697 770 852 941 Hz -->
+        <div class="freq-bar-wrap" data-idx="0"><div class="freq-bar-fill"></div><div class="freq-info"><span class="freq-hz">697 Hz</span><span class="freq-val" id="bv0">0.000</span></div></div>
+        <div class="freq-bar-wrap" data-idx="1"><div class="freq-bar-fill"></div><div class="freq-info"><span class="freq-hz">770 Hz</span><span class="freq-val" id="bv1">0.000</span></div></div>
+        <div class="freq-bar-wrap" data-idx="2"><div class="freq-bar-fill"></div><div class="freq-info"><span class="freq-hz">852 Hz</span><span class="freq-val" id="bv2">0.000</span></div></div>
+        <div class="freq-bar-wrap" data-idx="3"><div class="freq-bar-fill"></div><div class="freq-info"><span class="freq-hz">941 Hz</span><span class="freq-val" id="bv3">0.000</span></div></div>
+      </div>
 
-  <!-- LEFT MIC -->
-  <aside class="panel" style="grid-row:1/3">
-    <div class="panel-title">Microphone Live</div>
-    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:16px;text-align:center">
-      <div style="font-size:28px;margin-bottom:8px">🎙</div>
-      <div style="font-size:10px;color:var(--gray2);letter-spacing:1px;line-height:1.8">
-        Appuie sur START pour<br>activer le microphone.<br>
-        <span style="color:var(--purple)">L'algo Goertzel décode</span><br>
-        en temps réel.
+      <div style="margin-top:9px;">
+        <span class="row-badge high">HAUTES</span>
+        <span class="row-sub">Colonnes (column frequencies)</span>
+      </div>
+      <div class="freq-grid" id="high-grid">
+        <!-- 4 bars: 1209 1336 1477 1633 Hz -->
+        <div class="freq-bar-wrap" data-idx="4"><div class="freq-bar-fill"></div><div class="freq-info"><span class="freq-hz">1209 Hz</span><span class="freq-val" id="hv0">0.000</span></div></div>
+        <div class="freq-bar-wrap" data-idx="5"><div class="freq-bar-fill"></div><div class="freq-info"><span class="freq-hz">1336 Hz</span><span class="freq-val" id="hv1">0.000</span></div></div>
+        <div class="freq-bar-wrap" data-idx="6"><div class="freq-bar-fill"></div><div class="freq-info"><span class="freq-hz">1477 Hz</span><span class="freq-val" id="hv2">0.000</span></div></div>
+        <div class="freq-bar-wrap" data-idx="7"><div class="freq-bar-fill"></div><div class="freq-info"><span class="freq-hz">1633 Hz</span><span class="freq-val" id="hv3">0.000</span></div></div>
       </div>
     </div>
-    <div class="error-banner" id="mic-err-banner"></div>
-    <button class="run-btn purple-btn" id="mic-start-btn" onclick="startMic()">▶ START MICROPHONE</button>
-    <button class="run-btn red-btn" id="mic-stop-btn" disabled onclick="stopMic()">■ STOP</button>
-    <div class="mic-level-wrap">
-      <div class="mic-level-label">NIVEAU MICRO</div>
-      <div class="mic-level-track"><div class="mic-level-fill" id="mic-level-fill"></div></div>
-    </div>
-    <div>
-      <div class="panel-title" style="margin-bottom:8px">Métriques live</div>
-      <div class="metrics-grid">
-        <div class="metric"><div class="metric-label">Blocs</div><div class="metric-value" id="mic-m-blocks">0</div></div>
-        <div class="metric"><div class="metric-label">Tonalités</div><div class="metric-value green" id="mic-m-tones">0</div></div>
-        <div class="metric"><div class="metric-label">Séquence</div><div class="metric-value amber" id="mic-m-seq-len">0</div></div>
-        <div class="metric"><div class="metric-label">Énergie</div><div class="metric-value" id="mic-m-energy" style="font-size:11px">0.0000</div></div>
-      </div>
-    </div>
-    <div>
-      <div class="panel-title" style="margin-bottom:6px">Journal micro</div>
-      <div class="log-box" id="mic-log-box"></div>
-    </div>
-    <button class="run-btn" style="background:transparent;border-color:var(--border2);color:var(--gray2);font-size:9px;padding:8px" onclick="resetMic()">↺ EFFACER SÉQUENCE</button>
-  </aside>
 
-  <!-- CENTER MIC (shared viz) -->
-  <main class="panel-center">
-    <div class="viz-section" style="flex:1.3">
-      <div class="panel-title">Analyse fréquentielle · Live</div>
-      <div class="freq-group">
-        <div class="freq-group-header"><span class="tag tag-low">BASSES</span>Rangées</div>
-        <div class="bars-row" id="mic-bars-low"></div>
-      </div>
-      <div class="freq-group">
-        <div class="freq-group-header"><span class="tag tag-high">HAUTES</span>Colonnes</div>
-        <div class="bars-row" id="mic-bars-high"></div>
-      </div>
-    </div>
-    <div class="viz-section" style="flex:.7">
-      <div class="panel-title">Spectrogramme live</div>
-      <div class="spectro-wrap">
-        <canvas class="spectro-canvas" id="mic-spectro-canvas"></canvas>
-        <div class="spectro-axis" id="mic-spectro-axis"></div>
+    <div class="spectro-section">
+      <div class="spectro-title">Spectrogramme temporel</div>
+      <div class="spectro-canvas">
+        <canvas id="spectro-canvas"></canvas>
+        <div class="spectro-freq-labels">
+          <span class="spectro-freq-label">1633</span>
+          <span class="spectro-freq-label">1477</span>
+          <span class="spectro-freq-label">1336</span>
+          <span class="spectro-freq-label">1209</span>
+          <span class="spectro-freq-label"> 941</span>
+          <span class="spectro-freq-label"> 852</span>
+          <span class="spectro-freq-label"> 770</span>
+          <span class="spectro-freq-label"> 697</span>
+        </div>
       </div>
     </div>
-  </main>
 
-  <!-- RIGHT MIC -->
-  <aside class="panel" style="grid-row:1/3">
-    <div class="panel-title">Décodeur Live</div>
-    <div class="big-char-wrap">
-      <div class="big-char-label">CARACTÈRE DÉTECTÉ</div>
-      <div class="big-char silence" id="mic-big-char">—</div>
-      <div class="big-char-freqs" id="mic-big-char-freqs"><div>—</div></div>
+    <div class="timeline-row">
+      <span class="timeline-label">Timeline</span>
+      <div class="timeline-track">
+        <div class="timeline-progress" id="tl-prog"></div>
+        <div class="timeline-head" id="tl-head"></div>
+      </div>
+      <span class="timeline-time" id="tl-time">0.000s</span>
     </div>
-    <div class="stable-bar-wrap">
-      <div class="stable-bar-label"><span>STABILITÉ</span><span id="mic-stable-label">0/3</span></div>
-      <div class="stable-track"><div class="stable-fill" id="mic-stable-fill"></div></div>
-    </div>
-    <div>
-      <div class="panel-title" style="margin-bottom:8px">Séquence détectée</div>
-      <div class="seq-tape" id="mic-seq-tape"></div>
-    </div>
-    <div>
-      <div class="panel-title" style="margin-bottom:8px">Résultat</div>
-      <div class="full-seq" id="mic-full-seq">—</div>
-    </div>
-  </aside>
+  </div>
 
-  <!-- BOTTOM MIC (dummy) -->
-  <div class="panel-bottom">
-    <span>MODE LIVE</span>
-    <div class="timeline-wrap">
-      <div class="timeline-cursor" id="mic-timeline-cursor" style="animation:blink 1s infinite"></div>
+  <!-- ── RIGHT ── -->
+  <div class="right-panel">
+    <div class="decoder-hero">
+      <div class="decoder-label">Décodeur DTMF</div>
+      <div class="char-display" id="char-display">
+        <span class="char-placeholder" id="char-ph">EN ATTENTE</span>
+      </div>
+      <div class="stability-row">
+        <span class="stab-label">Stabilité</span>
+        <div class="stab-dots">
+          <div class="stab-dot" id="s0"></div>
+          <div class="stab-dot" id="s1"></div>
+          <div class="stab-dot" id="s2"></div>
+        </div>
+        <span class="stab-label" id="stab-count">0/3</span>
+      </div>
     </div>
-    <span id="mic-time-label">0.000s</span>
+
+    <div class="seq-section">
+      <div class="seq-title">Séquence (blocs)</div>
+      <div class="seq-block-list" id="seq-list">
+        <span class="seq-empty">—</span>
+      </div>
+    </div>
+
+    <div class="result-section">
+      <div class="result-title">Résultat final</div>
+      <div class="result-display" id="result-display">
+        <span class="result-placeholder">—</span>
+      </div>
+    </div>
+
+    <div class="keypad-section">
+      <div class="keypad-title">Référence clavier DTMF</div>
+      <div class="keypad-grid" id="keypad">
+        <div class="key" data-key="1">1</div><div class="key" data-key="2">2</div><div class="key" data-key="3">3</div><div class="key" data-key="A">A</div>
+        <div class="key" data-key="4">4</div><div class="key" data-key="5">5</div><div class="key" data-key="6">6</div><div class="key" data-key="B">B</div>
+        <div class="key" data-key="7">7</div><div class="key" data-key="8">8</div><div class="key" data-key="9">9</div><div class="key" data-key="C">C</div>
+        <div class="key" data-key="*">*</div><div class="key" data-key="0">0</div><div class="key" data-key="#">#</div><div class="key" data-key="D">D</div>
+      </div>
+    </div>
   </div>
 
 </div>
-</div><!-- /tab-mic -->
 
 <script>
-const API    = 'http://127.0.0.1:5000';
-const F_LOW  = [697,770,852,941];
-const F_HIGH = [1209,1336,1477,1633];
-const SPECTRO_W = 200;
+// ── CLOCK ──
+const clockEl = document.getElementById('clock');
+(function tick(){ clockEl.textContent = new Date().toTimeString().slice(0,8); setTimeout(tick,1000); })();
 
-// ── Tab switch ───────────────────────────────────────────────────────────────
-function switchTab(t) {
-  ['file','mic'].forEach(k => {
-    document.getElementById('tab-'+k).classList.toggle('active', k===t);
-    document.getElementById('content-'+k).classList.toggle('active', k===t);
+// ── BACKEND PING ──
+const backendDot   = document.getElementById('backend-dot');
+const backendLabel = document.getElementById('backend-label');
+async function pingBackend() {
+  try {
+    const r = await fetch('/analyze', { method:'POST', body: new FormData() });
+    // any response means backend is up (even 400)
+    backendDot.className   = 'dot on';
+    backendLabel.textContent = 'BACKEND ONLINE';
+  } catch(e) {
+    backendDot.className   = 'dot err';
+    backendLabel.textContent = 'BACKEND OFFLINE';
+  }
+}
+pingBackend();
+setInterval(pingBackend, 10000);
+
+// ── FILE DROP / SELECT ──
+const dropZone   = document.getElementById('drop-zone');
+const fileInput  = document.getElementById('file-input');
+const dropFname  = document.getElementById('drop-filename');
+const btnAnalyze = document.getElementById('btn-analyze');
+let selectedFile = null;
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+
+function setFile(f) {
+  if (!f || !f.name.endsWith('.wav')) { log('Fichier invalide — WAV seulement', 'err'); return; }
+  selectedFile = f;
+  dropFname.textContent = f.name;
+  dropFname.style.display = 'block';
+  dropZone.classList.add('has-file');
+  btnAnalyze.disabled = false;
+  log(`Fichier chargé : ${f.name}`, 'ok');
+}
+
+// ── RESET ──
+document.getElementById('btn-reset').addEventListener('click', resetAll);
+function resetAll() {
+  selectedFile = null;
+  fileInput.value = '';
+  dropFname.style.display = 'none';
+  dropZone.classList.remove('has-file');
+  btnAnalyze.disabled = true;
+  clearBars();
+  clearDecoder();
+  setProgress(0, 0, 0);
+  clearSpectro();
+  setTimeline(0, 1);
+  setMetrics(0, 0, 0, 0);
+  document.getElementById('seq-list').innerHTML = '<span class="seq-empty">—</span>';
+  document.getElementById('result-display').innerHTML = '<span class="result-placeholder">—</span>';
+  setStateIdle();
+  log('Réinitialisé');
+}
+
+// ── JOURNAL ──
+const journalEl = document.getElementById('journal');
+function log(msg, type='') {
+  const d = document.createElement('div');
+  d.className = 'journal-line' + (type ? ' '+type : '');
+  d.textContent = '› ' + msg;
+  journalEl.appendChild(d);
+  journalEl.scrollTop = journalEl.scrollHeight;
+  // keep max 40 lines
+  while (journalEl.children.length > 40) journalEl.removeChild(journalEl.firstChild);
+}
+
+// ── STATE ──
+const stateDot   = document.getElementById('state-dot');
+const stateLabel = document.getElementById('state-label');
+function setStateIdle()     { stateDot.className='dot on';   stateLabel.textContent='IDLE'; }
+function setStateAnalyzing(){ stateDot.className='dot warn'; stateLabel.textContent='ANALYSE...'; }
+function setStateDone()     { stateDot.className='dot on';   stateLabel.textContent='TERMINÉ'; }
+
+// ── FREQ BARS ──
+const bassWraps = Array.from(document.getElementById('bass-grid').querySelectorAll('.freq-bar-wrap'));
+const highWraps = Array.from(document.getElementById('high-grid').querySelectorAll('.freq-bar-wrap'));
+const allWraps  = [...bassWraps, ...highWraps];
+const BAR_MAX_H = 54; // px (fill area above .freq-info)
+
+function setBars(mags /* float[8] normalized 0..1 */, bestLowF, bestHighF) {
+  const bassFreqs = [697,770,852,941];
+  const highFreqs = [1209,1336,1477,1633];
+  const bestBassIdx = bassFreqs.indexOf(bestLowF);
+  const bestHighIdx = highFreqs.indexOf(bestHighF);
+
+  allWraps.forEach((wrap, i) => {
+    const fill = wrap.querySelector('.freq-bar-fill');
+    const valEl = wrap.querySelector('.freq-val');
+    const mag = mags[i] || 0;
+    const h = Math.max(2, Math.round(mag * BAR_MAX_H));
+    fill.style.height = h + 'px';
+    valEl.textContent = mag.toFixed(3);
+
+    const isActive = (i < 4 && i === bestBassIdx) || (i >= 4 && (i-4) === bestHighIdx);
+    wrap.classList.toggle('active-bar', isActive && mag > 0.1);
+    valEl.classList.toggle('hot', isActive && mag > 0.1);
   });
 }
 
-// ── Build bars ───────────────────────────────────────────────────────────────
-function buildBars(containerId, freqs, cls) {
-  const c = document.getElementById(containerId);
-  c.innerHTML = '';
-  freqs.forEach((f,i) => {
-    const col = document.createElement('div');
-    col.className = 'bar-col';
-    col.innerHTML = `
-      <div class="bar-track">
-        <div class="bar-fill ${cls}-bar" id="bar-${containerId}-${i}"></div>
-      </div>
-      <div class="bar-val" id="val-${containerId}-${i}">0.000</div>
-      <div class="bar-freq">${f}Hz</div>`;
-    c.appendChild(col);
+function clearBars() {
+  allWraps.forEach(w => {
+    w.querySelector('.freq-bar-fill').style.height = '2px';
+    const v = w.querySelector('.freq-val');
+    v.textContent = '0.000';
+    v.classList.remove('hot');
+    w.classList.remove('active-bar');
   });
 }
-buildBars('bars-low',  F_LOW,  'low');
-buildBars('bars-high', F_HIGH, 'high');
-buildBars('mic-bars-low',  F_LOW,  'low');
-buildBars('mic-bars-high', F_HIGH, 'high');
 
-// ── Spectro ──────────────────────────────────────────────────────────────────
-function initSpectro(canvasId, axisId) {
-  const canvas = document.getElementById(canvasId);
-  const axis   = document.getElementById(axisId);
-  axis.innerHTML = [...F_LOW,...F_HIGH].reverse().map(f=>`<span>${f}</span>`).join('');
-  const ctx = canvas.getContext('2d');
-  function resize() { const w=canvas.parentElement; canvas.width=w.clientWidth-66; canvas.height=w.clientHeight; }
-  resize();
-  window.addEventListener('resize', resize);
-  return { canvas, ctx, data:[] };
+// ── DECODER (char display + stability) ──
+const charDisplay  = document.getElementById('char-display');
+const charPh       = document.getElementById('char-ph');
+const stabDots     = [document.getElementById('s0'), document.getElementById('s1'), document.getElementById('s2')];
+const stabCount    = document.getElementById('stab-count');
+let   lastChar     = null;
+let   stableFrames = 0;
+
+function showChar(ch) {
+  if (ch === lastChar) {
+    stableFrames = Math.min(stableFrames + 1, 3);
+  } else {
+    stableFrames = 1;
+    lastChar = ch;
+  }
+  stabDots.forEach((d,i) => d.classList.toggle('filled', i < stableFrames));
+  stabCount.textContent = stableFrames + '/3';
+
+  charDisplay.innerHTML = '';
+  const span = document.createElement('span');
+  span.textContent = ch;
+  span.className   = 'char-anim';
+  charDisplay.appendChild(span);
+
+  // Keypad highlight
+  document.querySelectorAll('.key').forEach(k => k.classList.toggle('active', k.dataset.key === ch));
 }
-const spectroFile = initSpectro('spectro-canvas','spectro-axis');
-const spectroMic  = initSpectro('mic-spectro-canvas','mic-spectro-axis');
 
-function drawSpectro(sp) {
-  const { canvas, ctx, data } = sp;
-  const W=canvas.width, H=canvas.height;
-  ctx.clearRect(0,0,W,H);
-  const colW = W/SPECTRO_W, rowH = H/8;
-  data.slice(-SPECTRO_W).forEach((col,ci) => {
-    col.forEach((val,fi) => {
-      const x=ci*colW, y=H-(fi+1)*rowH, a=Math.min(1,val*1.4);
-      ctx.fillStyle = fi<4
-        ? `rgba(0,${Math.round(180+75*val)},${Math.round(200*val)},${a})`
-        : `rgba(${Math.round(200+55*val)},${Math.round(140*val)},0,${a})`;
-      ctx.fillRect(Math.floor(x),Math.floor(y),Math.ceil(colW)+1,Math.ceil(rowH)+1);
+function clearDecoder() {
+  charDisplay.innerHTML = '<span class="char-placeholder" id="char-ph">EN ATTENTE</span>';
+  stabDots.forEach(d => d.classList.remove('filled'));
+  stabCount.textContent = '0/3';
+  document.querySelectorAll('.key').forEach(k => k.classList.remove('active'));
+  lastChar = null; stableFrames = 0;
+}
+
+// ── SEQUENCE ──
+const seqList = document.getElementById('seq-list');
+let   seqArr  = [];
+
+function addToSeq(ch) {
+  seqArr.push(ch);
+  const block = document.createElement('div');
+  block.className = 'seq-block new';
+  block.textContent = ch;
+  if (seqList.querySelector('.seq-empty')) seqList.innerHTML = '';
+  seqList.appendChild(block);
+  setTimeout(() => block.classList.remove('new'), 250);
+}
+
+function clearSeq() { seqArr = []; seqList.innerHTML = '<span class="seq-empty">—</span>'; }
+
+// ── METRICS ──
+function setMetrics(blocs, tones, seq, energy) {
+  const set = (id, val, zero) => {
+    const el = document.getElementById(id);
+    el.textContent = typeof val === 'number' && !Number.isInteger(val) ? val.toFixed(4) : val;
+    el.classList.toggle('zero', zero || val === 0 || val === '0' || val === '0.0000');
+  };
+  set('m-blocs',  blocs,  blocs  === 0);
+  set('m-tones',  tones,  tones  === 0);
+  set('m-seq',    seq,    seq    === 0);
+  set('m-energy', energy, energy === 0);
+}
+
+// ── PROGRESS ──
+function setProgress(current, total, blockIdx) {
+  const pct = total > 0 ? (current / total) * 100 : 0;
+  document.getElementById('prog-fill').style.width  = pct + '%';
+  document.getElementById('prog-label').textContent = current + ' / ' + total + ' blocs';
+}
+
+// ── TIMELINE ──
+function setTimeline(time_s, duration_s) {
+  const pct = duration_s > 0 ? Math.min((time_s / duration_s) * 100, 100) : 0;
+  document.getElementById('tl-prog').style.width = pct + '%';
+  document.getElementById('tl-head').style.left  = pct + '%';
+  document.getElementById('tl-time').textContent  = time_s.toFixed(3) + 's';
+}
+
+// ── SPECTROGRAM CANVAS ──
+const spectroCanvas = document.getElementById('spectro-canvas');
+const spectroCtx    = spectroCanvas.getContext('2d');
+let   spectroData   = []; // array of float[8] magnitude columns
+const SPECTRO_FREQS = [697,770,852,941,1209,1336,1477,1633];
+// colors per freq band (low→green, high→yellow)
+const FREQ_COLORS = [
+  'rgba(0,200,138,',  // 697
+  'rgba(0,220,150,',  // 770
+  'rgba(0,240,165,',  // 852
+  'rgba(0,255,180,',  // 941
+  'rgba(180,255,120,',// 1209
+  'rgba(220,240,80,', // 1336
+  'rgba(255,220,60,', // 1477
+  'rgba(255,180,40,', // 1633
+];
+
+function resizeSpectro() {
+  const rect = spectroCanvas.parentElement.getBoundingClientRect();
+  spectroCanvas.width  = Math.floor(rect.width);
+  spectroCanvas.height = Math.floor(rect.height);
+  drawSpectro();
+}
+
+function drawSpectro() {
+  const W = spectroCanvas.width, H = spectroCanvas.height;
+  spectroCtx.clearRect(0, 0, W, H);
+  if (spectroData.length === 0) return;
+
+  const nCols   = spectroData.length;
+  const nFreqs  = 8;
+  const rowH    = H / nFreqs;
+  const colW    = Math.max(1, W / Math.max(nCols, 200));
+
+  spectroData.forEach((mags, ci) => {
+    const x = ci * colW;
+    mags.forEach((mag, fi) => {
+      // fi=0 → 697Hz at bottom, fi=7 → 1633Hz at top
+      const y = H - (fi + 1) * rowH;
+      const alpha = Math.min(1, mag * 1.4);
+      spectroCtx.fillStyle = FREQ_COLORS[fi] + alpha + ')';
+      spectroCtx.fillRect(x, y, Math.ceil(colW), Math.ceil(rowH));
     });
   });
 }
 
-// ── Apply a frame to the UI ──────────────────────────────────────────────────
-function applyFrame(f, prefix, sp) {
-  const mags = f.magnitudes;
-  const pre  = prefix ? prefix+'-' : '';
+function clearSpectro() { spectroData = []; drawSpectro(); }
+window.addEventListener('resize', resizeSpectro);
+setTimeout(resizeSpectro, 100);
 
-  // bars low
-  F_LOW.forEach((_,i) => {
-    const v   = mags[i];
-    const lit = f.is_tone && Math.round(f.best_low_f)===F_LOW[i];
-    const b   = document.getElementById(`bar-${pre}bars-low-${i}`);
-    const lbl = document.getElementById(`val-${pre}bars-low-${i}`);
-    if(!b) return;
-    b.style.height = Math.round(v*100)+'%';
-    b.classList.toggle('lit', lit);
-    lbl.textContent = v.toFixed(3);
-    lbl.className   = 'bar-val'+(lit?' lit-c':'');
-  });
-
-  // bars high
-  F_HIGH.forEach((_,i) => {
-    const v   = mags[4+i];
-    const lit = f.is_tone && Math.round(f.best_high_f)===F_HIGH[i];
-    const b   = document.getElementById(`bar-${pre}bars-high-${i}`);
-    const lbl = document.getElementById(`val-${pre}bars-high-${i}`);
-    if(!b) return;
-    b.style.height = Math.round(v*100)+'%';
-    b.classList.toggle('lit', lit);
-    lbl.textContent = v.toFixed(3);
-    lbl.className   = 'bar-val'+(lit?' lit-a':'');
-  });
-
-  // spectro
-  sp.data.push([...mags]);
-  if(sp.data.length>SPECTRO_W*2) sp.data.shift();
-  drawSpectro(sp);
-
-  // big char
-  const bigChar  = document.getElementById(pre+'big-char');
-  const bigFreqs = document.getElementById(pre+'big-char-freqs');
-  if(f.is_tone) {
-    const c = f.raw_detected || '…';
-    bigChar.textContent = c;
-    bigChar.className   = 'big-char'+(prefix==='mic'?' mic-mode':'');
-    bigFreqs.innerHTML  = `<div class="f-low">${Math.round(f.best_low_f)} Hz</div><div class="f-high">${Math.round(f.best_high_f)} Hz</div>`;
+// ── RESULT ──
+function setResult(seq_str) {
+  const el = document.getElementById('result-display');
+  if (seq_str) {
+    el.innerHTML = seq_str;
+    el.style.color = 'var(--accent)';
   } else {
-    bigChar.textContent = '—';
-    bigChar.className   = 'big-char silence';
-    bigFreqs.innerHTML  = '<div>silence</div>';
-  }
-
-  // stable bar
-  const sc = Math.min(f.stable_count||0, 3);
-  const sf = document.getElementById(pre+'stable-fill');
-  const sl = document.getElementById(pre+'stable-label');
-  if(sf) {
-    sf.style.width = Math.round(sc/3*100)+'%';
-    sf.className   = `stable-fill s${sc}`;
-  }
-  if(sl) sl.textContent = sc+'/3';
-
-  // detected char → sequence
-  if(f.detected_char) {
-    const el = document.createElement('div');
-    const sp = ['*','#','A','B','C','D'].includes(f.detected_char);
-    el.className   = 'seq-char'+(sp?' sp':'');
-    el.textContent = f.detected_char;
-    document.getElementById(pre+'seq-tape').appendChild(el);
-    const fs2 = document.getElementById(pre+'full-seq');
-    fs2.textContent = (fs2.textContent==='—'?'':fs2.textContent)+f.detected_char;
+    el.innerHTML = '<span class="result-placeholder">—</span>';
   }
 }
 
-// ══════════════════════════════════════════════
-//  FILE MODE
-// ══════════════════════════════════════════════
-let fileObj=null, frames=[], currentFrame=0, totalFrames=0, toneCount=0, animHandle=null;
+// ── ANALYZE ──
+btnAnalyze.addEventListener('click', startAnalysis);
 
-document.getElementById('file-input').addEventListener('change', e => {
-  if(e.target.files[0]) loadFile(e.target.files[0]);
-});
-const dz = document.getElementById('drop-zone');
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
-dz.addEventListener('drop', e => {
-  e.preventDefault(); dz.classList.remove('dragover');
-  const f=e.dataTransfer.files[0];
-  if(f&&f.name.endsWith('.wav')) loadFile(f);
-  else showErr('Fichier WAV uniquement');
-});
-function loadFile(f) {
-  fileObj=f; hideErr();
-  document.getElementById('fi-name').textContent=f.name;
-  ['fi-dur','fi-fs','fi-blocks'].forEach(id=>document.getElementById(id).textContent='…');
-  document.getElementById('file-info').classList.add('visible');
-  document.getElementById('run-btn').disabled=false;
-  addLog('log-box','—',`Fichier : ${f.name}`,'warn');
-}
 async function startAnalysis() {
-  if(!fileObj) return;
-  resetAll(false);
-  setStatus('active','proc-dot','proc-status','PROCESSING');
-  document.getElementById('run-btn').disabled=true;
-  const fd=new FormData(); fd.append('file',fileObj);
+  if (!selectedFile) return;
+  btnAnalyze.disabled = true;
+  setStateAnalyzing();
+  clearBars();
+  clearDecoder();
+  clearSeq();
+  clearSpectro();
+  setTimeline(0, 1);
+  setMetrics(0,0,0,0);
+  setResult('');
+  log(`Envoi vers /analyze — ${selectedFile.name}`, 'ok');
+
+  const fd = new FormData();
+  fd.append('file', selectedFile);
+
+  let data;
   try {
-    const res  = await fetch(`${API}/analyze`,{method:'POST',body:fd});
-    const json = await res.json();
-    if(!json.ok){showErr(json.error||'Erreur backend');setStatus('idle','proc-dot','proc-status','IDLE');return;}
-    frames=json.frames; totalFrames=json.n_blocks; currentFrame=0;
-    document.getElementById('fi-dur').textContent    = json.duration_s+'s';
-    document.getElementById('fi-fs').textContent     = json.fs+' Hz';
-    document.getElementById('fi-blocks').textContent = json.n_blocks;
-    addLog('log-box','—',`${json.n_blocks} blocs · ${json.duration_s}s`,'warn');
-    buildTimeline(json.frames, json.n_blocks);
-    playFrames();
+    const resp = await fetch('/analyze', { method:'POST', body: fd });
+    data = await resp.json();
   } catch(e) {
-    showErr(`Backend inaccessible (${API}) — lance app.py`);
-    setStatus('idle','proc-dot','proc-status','IDLE');
-    document.getElementById('run-btn').disabled=false;
-  }
-}
-function playFrames() {
-  if(currentFrame>=frames.length) {
-    setStatus('idle','proc-dot','proc-status','IDLE');
-    document.getElementById('run-btn').disabled=false;
-    addLog('log-box','—',`Terminé · ${document.getElementById('full-seq').textContent}`,'warn');
+    log('Erreur réseau : ' + e.message, 'err');
+    setStateIdle();
+    btnAnalyze.disabled = false;
     return;
   }
-  const f=frames[currentFrame];
-  applyFrame(f,'',spectroFile);
-  if(f.is_tone) toneCount++;
-  document.getElementById('m-blocks').textContent  = f.block_index+1;
-  document.getElementById('m-tones').textContent   = toneCount;
-  document.getElementById('m-seq-len').textContent = document.getElementById('seq-tape').children.length;
-  document.getElementById('m-energy').textContent  = f.total_energy.toFixed(4);
-  const pct=(f.block_index+1)/totalFrames*100;
-  document.getElementById('progress-fill').style.width  = pct+'%';
-  document.getElementById('prog-label').textContent     = `${f.block_index+1} / ${totalFrames} blocs`;
-  document.getElementById('timeline-cursor').style.left = pct+'%';
-  document.getElementById('timeline-label').textContent = f.time_s.toFixed(3)+'s';
-  if(f.detected_char) addLog('log-box',f.time_s.toFixed(2)+'s',`TOUCHE ${f.detected_char} · L:${Math.round(f.best_low_f)}Hz · H:${Math.round(f.best_high_f)}Hz`,'tone');
-  currentFrame++;
-  animHandle=setTimeout(playFrames, 35);
-}
-function buildTimeline(framesData, total) {
-  const wrap=document.getElementById('timeline-wrap');
-  wrap.querySelectorAll('.timeline-tone').forEach(e=>e.remove());
-  let s=null;
-  framesData.forEach((f,i)=>{
-    const p=(i/total)*100;
-    if(f.is_tone&&s===null) s=p;
-    if(!f.is_tone&&s!==null) {
-      const el=document.createElement('div');
-      el.className='timeline-tone'; el.style.left=s+'%'; el.style.width=(p-s)+'%';
-      wrap.appendChild(el); s=null;
-    }
-  });
-}
-function resetAll(full=true) {
-  clearTimeout(animHandle);
-  frames=[]; currentFrame=0; totalFrames=0; toneCount=0;
-  spectroFile.data=[];
-  const ctx=spectroFile.ctx; ctx.clearRect(0,0,spectroFile.canvas.width,spectroFile.canvas.height);
-  F_LOW.forEach((_,i)=>{
-    const b=document.getElementById(`bar-bars-low-${i}`); if(b){b.style.height='0%';b.classList.remove('lit');}
-    const h=document.getElementById(`bar-bars-high-${i}`); if(h){h.style.height='0%';h.classList.remove('lit');}
-    const vl=document.getElementById(`val-bars-low-${i}`); if(vl) vl.textContent='0.000';
-    const vh=document.getElementById(`val-bars-high-${i}`); if(vh) vh.textContent='0.000';
-  });
-  document.getElementById('big-char').textContent='—'; document.getElementById('big-char').className='big-char silence';
-  document.getElementById('big-char-freqs').innerHTML='<div>—</div>';
-  document.getElementById('seq-tape').innerHTML='';
-  document.getElementById('full-seq').textContent='—';
-  document.getElementById('stable-fill').style.width='0%';
-  document.getElementById('stable-label').textContent='0/3';
-  ['m-blocks','m-tones','m-seq-len'].forEach(id=>document.getElementById(id).textContent='0');
-  document.getElementById('m-energy').textContent='0.0000';
-  document.getElementById('progress-fill').style.width='0%';
-  document.getElementById('prog-label').textContent='0 / 0 blocs';
-  document.getElementById('timeline-cursor').style.left='0%';
-  document.getElementById('timeline-label').textContent='0.000s';
-  document.getElementById('timeline-wrap').querySelectorAll('.timeline-tone').forEach(e=>e.remove());
-  document.getElementById('log-box').innerHTML='';
-  if(full) { document.getElementById('run-btn').disabled=true; fileObj=null; document.getElementById('file-info').classList.remove('visible'); hideErr(); }
-  setStatus('idle','proc-dot','proc-status','IDLE');
-}
-function showErr(m) { const e=document.getElementById('err-banner'); e.textContent='⚠ '+m; e.classList.add('visible'); }
-function hideErr()  { document.getElementById('err-banner').classList.remove('visible'); }
 
-// ══════════════════════════════════════════════
-//  MIC LIVE MODE
-// ══════════════════════════════════════════════
-let micStream=null, audioCtx=null, processor=null, micRunning=false;
-let micState={}, micBlockIndex=0, micToneCount=0, micTimeS=0;
-const MIC_FS      = 8000;
-const BLOCK_SIZE  = 205;
-let micBuffer     = new Float32Array(0);
-
-async function startMic() {
-  const btn=document.getElementById('mic-start-btn');
-  const stop=document.getElementById('mic-stop-btn');
-  const err=document.getElementById('mic-err-banner');
-  err.classList.remove('visible');
-  try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio:{ sampleRate:MIC_FS, channelCount:1, echoCancellation:false, noiseSuppression:false, autoGainControl:false }});
-  } catch(e) {
-    err.textContent='⚠ Accès micro refusé : '+e.message; err.classList.add('visible'); return;
+  if (!data.ok) {
+    log('Erreur backend : ' + (data.error || '?'), 'err');
+    setStateIdle();
+    btnAnalyze.disabled = false;
+    return;
   }
-  audioCtx  = new AudioContext({ sampleRate: MIC_FS });
-  const src = audioCtx.createMediaStreamSource(micStream);
-  processor = audioCtx.createScriptProcessor(BLOCK_SIZE, 1, 1);
-  processor.onaudioprocess = onMicAudio;
-  src.connect(processor);
-  processor.connect(audioCtx.destination);
-  micRunning=true; micState={}; micBlockIndex=0; micToneCount=0; micTimeS=0;
-  btn.disabled=true; stop.disabled=false;
-  setStatus('rec','proc-dot','proc-status','RECORDING');
-  addLog('mic-log-box','—','Microphone activé','mic');
+
+  log(`Durée : ${data.duration_s}s  |  fs : ${data.fs} Hz  |  ${data.frames.length} blocs`, 'ok');
+  log(`Séquence détectée : "${data.sequence}"`, 'ok');
+  setStateDone();
+
+  // Pre-fill spectrogram with all data
+  spectroData = data.frames.map(f => f.magnitudes);
+  resizeSpectro();
+
+  // Animate playback frame-by-frame
+  await playbackFrames(data.frames, data.duration_s, data.sequence);
+
+  btnAnalyze.disabled = false;
+  setStateIdle();
 }
 
-function onMicAudio(e) {
-  if(!micRunning) return;
-  const input   = e.inputBuffer.getChannelData(0);
-  const samples = Array.from(input);
+// ── PLAYBACK ANIMATION ──
+// Replays all frames at ~25ms per frame (≈ real-time for 8kHz/205 samples = ~25.6ms/bloc)
+async function playbackFrames(frames, duration_s, finalSeq) {
+  const FRAME_MS = 26; // matches 205 samples @ 8000Hz
+  const total    = frames.length;
+  let   toneCount = 0;
+  let   lastDetected = null;
 
-  // Niveau micro (RMS)
-  const rms = Math.sqrt(samples.reduce((a,v)=>a+v*v,0)/samples.length);
-  document.getElementById('mic-level-fill').style.width = Math.min(100, Math.round(rms*800))+'%';
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
 
-  // Envoie au backend
-  fetch(`${API}/analyze_live`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ fs:MIC_FS, samples, state:micState })
-  })
-  .then(r=>r.json())
-  .then(json=>{
-    if(!json.ok) return;
-    micState = json.state;
-    const f   = json.frame;
-    micTimeS  = micBlockIndex*(BLOCK_SIZE/MIC_FS);
+    // Bars
+    setBars(f.magnitudes, f.best_low_f, f.best_high_f);
 
-    applyFrame(f,'mic',spectroMic);
-    if(f.is_tone) micToneCount++;
+    // Energy metric
+    setMetrics(i + 1, total, seqArr.length, f.total_energy);
 
-    document.getElementById('mic-m-blocks').textContent  = ++micBlockIndex;
-    document.getElementById('mic-m-tones').textContent   = micToneCount;
-    document.getElementById('mic-m-seq-len').textContent = document.getElementById('mic-seq-tape').children.length;
-    document.getElementById('mic-m-energy').textContent  = f.total_energy.toFixed(4);
-    document.getElementById('mic-time-label').textContent= micTimeS.toFixed(3)+'s';
+    // Progress
+    setProgress(i + 1, total, i);
 
-    if(f.detected_char) addLog('mic-log-box',micTimeS.toFixed(2)+'s',`TOUCHE ${f.detected_char} · L:${Math.round(f.best_low_f)}Hz · H:${Math.round(f.best_high_f)}Hz`,'tone');
-  })
-  .catch(()=>{});
+    // Timeline
+    setTimeline(f.time_s, duration_s);
+
+    // Decoder
+    if (f.is_tone && f.detected_char) {
+      showChar(f.detected_char);
+      if (f.detected_char !== lastDetected) {
+        toneCount++;
+        addToSeq(f.detected_char);
+        lastDetected = f.detected_char;
+        setResult(seqArr.join(''));
+      }
+    } else if (!f.is_tone) {
+      // fade out char if silence
+      if (lastDetected !== null) {
+        lastDetected = null;
+        clearDecoder();
+      }
+    }
+
+    // Scroll spectrogram to show current column
+    // (already all drawn, so just update timeline)
+
+    await sleep(FRAME_MS);
+  }
+
+  // Final metrics
+  setMetrics(total, toneCount, seqArr.length, 0);
+  setResult(finalSeq);
 }
 
-function stopMic() {
-  micRunning=false;
-  if(processor)  { processor.disconnect(); processor=null; }
-  if(audioCtx)   { audioCtx.close(); audioCtx=null; }
-  if(micStream)  { micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
-  document.getElementById('mic-start-btn').disabled=false;
-  document.getElementById('mic-stop-btn').disabled=true;
-  document.getElementById('mic-level-fill').style.width='0%';
-  setStatus('alive','proc-dot','proc-status','IDLE');
-  addLog('mic-log-box','—','Microphone arrêté','warn');
-}
-
-function resetMic() {
-  stopMic();
-  micState={}; micBlockIndex=0; micToneCount=0; micTimeS=0;
-  spectroMic.data=[];
-  spectroMic.ctx.clearRect(0,0,spectroMic.canvas.width,spectroMic.canvas.height);
-  F_LOW.forEach((_,i)=>{
-    const b=document.getElementById(`bar-mic-bars-low-${i}`); if(b){b.style.height='0%';b.classList.remove('lit');}
-    const h=document.getElementById(`bar-mic-bars-high-${i}`); if(h){h.style.height='0%';h.classList.remove('lit');}
-  });
-  document.getElementById('mic-big-char').textContent='—'; document.getElementById('mic-big-char').className='big-char silence';
-  document.getElementById('mic-big-char-freqs').innerHTML='<div>—</div>';
-  document.getElementById('mic-seq-tape').innerHTML='';
-  document.getElementById('mic-full-seq').textContent='—';
-  document.getElementById('mic-stable-fill').style.width='0%';
-  document.getElementById('mic-stable-label').textContent='0/3';
-  ['mic-m-blocks','mic-m-tones','mic-m-seq-len'].forEach(id=>document.getElementById(id).textContent='0');
-  document.getElementById('mic-m-energy').textContent='0.0000';
-  document.getElementById('mic-log-box').innerHTML='';
-  document.getElementById('mic-err-banner').classList.remove('visible');
-}
-
-// ── Shared helpers ───────────────────────────────────────────────────────────
-function setStatus(state, dotId, lblId, txt) {
-  const dot=document.getElementById(dotId), lbl=document.getElementById(lblId);
-  dot.className='dot'+(state==='alive'?' alive':state==='active'?' active':state==='rec'?' rec':'');
-  lbl.textContent=txt;
-}
-function addLog(boxId, ts, msg, cls) {
-  const box=document.getElementById(boxId);
-  const line=document.createElement('div'); line.className='log-line';
-  line.innerHTML=`<span class="log-ts">${ts}</span><span class="log-msg ${cls||''}">${msg}</span>`;
-  box.appendChild(line); box.scrollTop=box.scrollHeight;
-}
-
-// ── Clock ─────────────────────────────────────────────────────────────────────
-function tick(){ document.getElementById('clock').textContent=new Date().toTimeString().slice(0,8); }
-tick(); setInterval(tick,1000);
-
-// ── Ping backend ─────────────────────────────────────────────────────────────
-async function ping() {
-  try {
-    const r=await fetch(`${API}/ping`,{signal:AbortSignal.timeout(1500)});
-    const j=await r.json();
-    if(j.status==='ok'){ document.getElementById('server-dot').className='dot alive'; document.getElementById('server-status').textContent='BACKEND OK'; }
-  } catch { document.getElementById('server-dot').className='dot'; document.getElementById('server-status').textContent='BACKEND OFFLINE'; }
-}
-ping(); setInterval(ping,4000);
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 </script>
 </body>
 </html>
