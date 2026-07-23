@@ -1,4 +1,4 @@
-# 📞 Décodage DTMF robuste -- Goertzel optimisé en C/Python
+#  Décodage DTMF robuste -- Goertzel optimisé en C/Python
 
 **Auteur** : Jonathan AGBODRE\
 **Date** : Mai 2026\
