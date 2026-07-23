@@ -1,0 +1,196 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\geometry{margin=2.5cm}
+
+\title{Décodeur DTMF basé sur l'algorithme de Goertzel avec contrôle du Twist}
+\author{Jonathan Koffi AGBODRE}
+\date{Mai 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Ce rapport présente le développement d'un décodeur de signaux DTMF (Dual-Tone Multi-Frequency) reposant sur l'algorithme de Goertzel. Le calcul des composantes fréquentielles est réalisé en langage C afin de limiter le coût de calcul, tandis que Python assure la logique de détection ainsi que l'interface utilisateur. Le système intègre un contrôle du Twist, un seuillage relatif et une validation temporelle afin d'améliorer la fiabilité de la détection sur des signaux bruités.
+\end{abstract}
+
+\section{Introduction}
+
+Les signaux DTMF sont utilisés dans les réseaux téléphoniques pour représenter les touches d'un clavier à l'aide de deux fréquences sinusoïdales.
+
+L'objectif de ce projet est de détecter ces paires de fréquences de manière fiable, y compris lorsque le signal est affecté par du bruit ou par des variations d'amplitude. Pour cela, le projet combine un calcul fréquentiel en langage C avec une logique de décision développée en Python.
+
+\section{Architecture du projet}
+
+Le projet est organisé en plusieurs modules.
+
+\begin{itemize}
+
+\item \textbf{app/} : application Flask, moteur de détection DTMF et interface Web.
+
+\item \textbf{decoder/} : implémentation de l'algorithme de Goertzel en C ainsi que la bibliothèque compilée.
+
+\item \textbf{samples/} : fichiers audio générés et utilisés lors des essais.
+
+\item \textbf{tests/} : scripts de génération des signaux et de validation du décodeur.
+
+\end{itemize}
+
+\bigskip
+
+\begin{verbatim}
+projet_dtmf/
+|
+|-- app/
+|   |-- app.py
+|   |-- dtmf_engine.py
+|   |-- dtmf_utils.py
+|   `-- index.html
+|
+|-- decoder/
+|   |-- goertzel.c
+|   |-- goertzel.h
+|   `-- goertzel.dll
+|
+|-- samples/
+|
+|-- tests/
+|   |-- detector.py
+|   |-- fichier_test.py
+|   `-- generator.py
+|
+|-- Dockerfile
+|-- docker-compose.yml
+|-- requirements.txt
+|-- .gitignore
+`-- README.md
+\end{verbatim}
+
+\section{Algorithme de Goertzel}
+
+L'algorithme de Goertzel permet de calculer efficacement l'énergie d'un nombre limité de fréquences sans effectuer une transformée de Fourier complète.
+
+Pour une fréquence cible $f_k$ et une fréquence d'échantillonnage $f_s$, le coefficient utilisé est
+
+\[
+\mathrm{coeff}=2\cos\left(2\pi\frac{f_k}{f_s}\right)
+\]
+
+Pour chaque échantillon du bloc :
+
+\[
+\begin{aligned}
+q_0 &= \mathrm{coeff}\times q_1-q_2+x[n] \\
+q_2 &= q_1 \\
+q_1 &= q_0
+\end{aligned}
+\]
+
+La magnitude est ensuite calculée par
+
+\[
+M=q_1^2+q_2^2-\mathrm{coeff}\times q_1q_2.
+\]
+
+Dans cette implémentation, les blocs sont constitués de 205 échantillons, soit environ 25,6 ms pour une fréquence d'échantillonnage de 8000 Hz.
+
+\section{Détection des tonalités}
+
+Chaque bloc est analysé afin de déterminer :
+
+\begin{itemize}
+
+\item la fréquence dominante de la bande basse ;
+
+\item la fréquence dominante de la bande haute ;
+
+\item leur énergie respective ;
+
+\item l'énergie totale du bloc.
+
+\end{itemize}
+
+La décision repose sur trois critères :
+
+\begin{enumerate}
+
+\item les deux fréquences doivent dépasser un seuil relatif ;
+
+\item le rapport d'énergie (Twist) doit être compris entre 0,25 et 4 ;
+
+\item une même touche doit être détectée sur plusieurs blocs consécutifs.
+
+\end{enumerate}
+
+Cette approche réduit les faux positifs provoqués par les clics ou les impulsions de courte durée.
+
+\section{Interface Web}
+
+Une application Flask permet de traiter directement des fichiers audio au format WAV.
+
+Le traitement comprend :
+
+\begin{enumerate}
+
+\item lecture du fichier ;
+
+\item conversion en mono ;
+
+\item rééchantillonnage à 8000 Hz ;
+
+\item normalisation du signal ;
+
+\item découpage en blocs ;
+
+\item exécution du moteur de détection ;
+
+\item génération d'une réponse JSON contenant la séquence détectée ainsi que les informations de chaque bloc.
+
+\end{enumerate}
+
+\section{Résultats}
+
+Les essais réalisés montrent que :
+
+\begin{itemize}
+
+\item les séquences DTMF sont correctement détectées sur des enregistrements propres ;
+
+\item le contrôle du Twist réduit les détections erronées dues aux impulsions et aux clics ;
+
+\item le seuillage relatif améliore la robustesse lorsque le niveau du signal varie.
+
+\end{itemize}
+
+\section{Améliorations possibles}
+
+Les évolutions envisagées comprennent :
+
+\begin{itemize}
+
+\item acquisition audio en temps réel via un microphone ;
+
+\item prise en charge de formats audio supplémentaires ;
+
+\item optimisation de l'implémentation C à l'aide d'instructions SIMD ;
+
+\item ajout de jeux de tests automatisés plus complets.
+
+\end{itemize}
+
+\section{Conclusion}
+
+Ce projet met en œuvre un décodeur DTMF reposant sur l'algorithme de Goertzel et une logique de décision développée en Python. L'association du contrôle du Twist, du seuillage relatif et de la validation temporelle permet de limiter les faux positifs tout en conservant une bonne capacité de détection. Cette architecture peut être étendue à une détection en temps réel ou à d'autres applications de traitement du signal.
+
+\end{document}
