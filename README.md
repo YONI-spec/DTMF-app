@@ -32,14 +32,29 @@ exploité depuis Python via `ctypes`.
 
 ``` text
 projet_dtmf/
-├── detector.c
-├── goertzel.dll
-├── dtmf_utils.py
-├── detector.py
-├── dtmf_engine.py
-├── app.py
-├── index.html
+├── app/
+│   ├── app.py                 # API Flask
+│   ├── dtmf_engine.py         # Moteur de détection
+│   ├── dtmf_utils.py          # Fréquences DTMF et utilitaires
+│   └── index.html             # Interface Web
+│
+├── decoder/
+│   ├── goertzel.c             # Implémentation Goertzel en C
+│   ├── goertzel.h             # Déclarations
+│   └── goertzel.dll           # Bibliothèque compilée (Windows)
+│
+├── samples/
+│   └── ...                    # Fichiers audio générés et exemples
+│
+├── tests/
+│   ├── detector.py            # Tests du décodeur
+│   ├── fichier_test.py        # Jeux de tests
+│   └── generator.py           # Génération de signaux DTMF
+│
+├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt
+├── .gitignore
 └── README.md
 ```
 
